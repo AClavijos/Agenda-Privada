@@ -415,6 +415,14 @@ code.url{font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--t
 .howto.err{color:var(--danger)}
 @media (display-mode: standalone){ .sidebar{padding-top:calc(24px + var(--safe-t))} }
 
+/* ---------- Classroom / Moodle ---------- */
+.src{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:5px;white-space:nowrap}
+.src.gc{background:rgba(61,214,140,.14);color:#3DD68C}
+.src.md{background:rgba(255,138,76,.14);color:#FF8A4C}
+.intg{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:12px;background:var(--bg-elevated)}
+.intg-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.intg input{padding:8px 10px;font-size:13px}
+
 </style>
 </head>
 <body>
@@ -560,6 +568,27 @@ const TR={
 'El servidor tarda en responder.':['El servidor triga a respondre.','The server is taking too long to respond.'],
 '¿Tarda mucho? Recargar':['Triga molt? Recarregar','Taking too long? Reload'],
 'Detalle del error':["Detall de l'error",'Error detail'],
+'No se ha podido consultar el estado de las conexiones.':["No s'ha pogut consultar l'estat de les connexions.",'Could not check the connections.'],
+'Google ha caducado el acceso. Vuelve a conectar.':["Google ha caducat l'accés. Torna a connectar.",'Google access expired. Connect again.'],
+'Tu instituto bloquea que apps externas lean Classroom.':["El teu institut bloqueja que apps externes llegeixin Classroom.",'Your school blocks external apps from reading Classroom.'],
+'Has cancelado la conexión.':['Has cancel·lat la connexió.','You cancelled the connection.'],
+'El enlace de Moodle no es válido o ha caducado. Vuelve a copiarlo desde Moodle.':["L'enllaç de Moodle no és vàlid o ha caducat. Torna a copiar-lo des de Moodle.",'The Moodle link is not valid or has expired. Copy it again from Moodle.'],
+'Falta terminar la configuración de Google (ID y secreto de cliente).':['Falta acabar la configuració de Google (ID i secret de client).','Google setup is not finished yet (client ID and secret).'],
+'ahora mismo':['ara mateix','just now'],'hace {n} min':['fa {n} min','{n} min ago'],'hace {n} h':['fa {n} h','{n} h ago'],
+'Para importar tareas necesitas entrar con tu cuenta.':['Per importar tasques has d\'entrar amb el teu compte.','You need to sign in to import tasks.'],
+'Última vez: {a} · {n} tareas':['Última vegada: {a} · {n} tasques','Last sync: {a} · {n} tasks'],'Importando…':['Important…','Importing…'],
+'Classroom y Moodle':['Classroom i Moodle','Classroom and Moodle'],
+'Las tareas nuevas entran solas cada 30 minutos. Puedes añadirles pasos y notas: no se pierden al actualizarse.':["Les tasques noves entren soles cada 30 minuts. Hi pots afegir passos i notes: no es perden quan s'actualitzen.",'New tasks come in on their own every 30 minutes. You can add steps and notes to them: they are kept when they update.'],
+'Sincronizando…':['Sincronitzant…','Syncing…'],'Sincronizar ahora':['Sincronitzar ara','Sync now'],'Desconectar':['Desconnectar','Disconnect'],
+'Abriendo Google…':['Obrint Google…','Opening Google…'],'Conectar con Google Classroom':['Connectar amb Google Classroom','Connect Google Classroom'],
+'En Moodle: Calendario → Exportar calendario → Todos los cursos + Eventos recientes y próximos → Obtener URL. Pégala aquí:':["A Moodle: Calendari → Exporta el calendari → Tots els cursos + Esdeveniments recents i propers → Obtén l'URL. Enganxa-la aquí:",'In Moodle: Calendar → Export calendar → All courses + Recent and upcoming events → Get calendar URL. Paste it here:'],
+'Classroom desconectado. Las tareas ya importadas se quedan.':['Classroom desconnectat. Les tasques ja importades es queden.','Classroom disconnected. Tasks already imported stay.'],
+'Pega el enlace completo que empieza por https://':["Enganxa l'enllaç complet que comença per https://",'Paste the full link starting with https://'],
+'Moodle conectado: {n} tareas encontradas.':['Moodle connectat: {n} tasques trobades.','Moodle connected: {n} tasks found.'],
+'Moodle quitado. Las tareas ya importadas se quedan.':['Moodle tret. Les tasques ja importades es queden.','Moodle removed. Tasks already imported stay.'],
+'{n} tareas nuevas importadas.':['{n} tasques noves importades.','{n} new tasks imported.'],'Todo al día: no hay tareas nuevas.':['Tot al dia: no hi ha tasques noves.','All up to date: no new tasks.'],
+'Classroom conectado: importando tus tareas…':['Classroom connectat: important les teves tasques…','Classroom connected: importing your tasks…'],
+'Abrir en {s}':['Obrir a {s}','Open in {s}'],
 'La app aún se está instalando. Espera unos segundos y vuelve a intentarlo.':["L'app encara s'està instal·lant. Espera uns segons i torna-ho a provar.",'The app is still installing. Wait a few seconds and try again.']
 };
 const DICT={ca:{},en:{}};
@@ -691,6 +720,7 @@ function cleanItem(raw,id){
     grade:typeof raw.grade==='number'&&isFinite(raw.grade)?raw.grade:null,
     steps:Array.isArray(raw.steps)?raw.steps.slice(0,60).map(s=>({id:str(s&&s.id,60)||uid(),text:str(s&&s.text,300),done:!!(s&&s.done)})).filter(s=>s.text):[],
     done:!!raw.done, doneAt:typeof raw.doneAt==='number'?raw.doneAt:null, deleted:!!raw.deleted,
+    source:raw.source==='classroom'||raw.source==='moodle'?raw.source:'', link:/^https:\/\//.test(raw.link||'')?str(raw.link,600):'', course:str(raw.course,120), extId:str(raw.extId,200),
     createdAt:num(raw.createdAt,Date.now()), updatedAt:num(raw.updatedAt,Date.now())
   };
 }
@@ -905,7 +935,8 @@ function groupTasks(list){
 }
 
 /* ================= PIEZAS ================= */
-const chip=id=>{const s=subj(id);return s?`<span class="chip" style="--c:${s.color}"><i></i><em>${esc(s.name)}</em></span>`:'';};
+const chip=(id,course)=>{const s=subj(id);return s?`<span class="chip" style="--c:${s.color}"><i></i><em>${esc(s.name)}</em></span>`:course?`<span class="chip" style="--c:#646D80" title="${esc(course)}"><i></i><em>${esc(course)}</em></span>`:'';};
+const srcBadge=it=>it.source?`<span class="src ${it.source==='classroom'?'gc':'md'}">${sourceName(it.source)}</span>`:'';
 const catChip=c=>`<span class="chip" style="--c:${CATS[c]||'#9AA3B5'}"><i></i><em>${esc(catName(c))}</em></span>`;
 const stepsTxt=it=>it.steps.length?`${it.steps.filter(s=>s.done).length}/${it.steps.length} ${it.kind==='examen'?t('temas'):t('pasos')}`:'';
 function dueLabel(it){
@@ -918,7 +949,7 @@ function taskRow(it,opts={}){
   return `<div class="task ${it.done?'done':''} ${sel?'sel':''}" data-act="open" data-id="${it.id}" role="button" tabindex="0">
     <button class="cb ${it.done?'on':''}" data-act="toggle" data-id="${it.id}" aria-label="${it.done?t('Marcar como pendiente'):t('Marcar como hecho')}">${it.done?ic('check','s14'):''}</button>
     <div class="t-body"><div class="t-title">${esc(it.title||t('(sin título)'))}</div>
-      <div class="t-meta">${opts.kindTag||it.kind==='examen'?`<span class="kind ${it.kind}">${kindName(it.kind).toUpperCase()}</span>`:''}${chip(it.subjectId)}${dueLabel(it)}${it.steps.length?`<span class="m st">${ic('steps','s14')}${stepsTxt(it)}</span>`:''}</div></div>
+      <div class="t-meta">${opts.kindTag||it.kind==='examen'?`<span class="kind ${it.kind}">${kindName(it.kind).toUpperCase()}</span>`:''}${chip(it.subjectId,it.course)}${dueLabel(it)}${srcBadge(it)}${it.steps.length?`<span class="m st">${ic('steps','s14')}${stepsTxt(it)}</span>`:''}</div></div>
     ${it.kind!=='personal'?`<span class="flag ${it.done?'':it.priority}" title="${t('Prioridad')}: ${prioName(it.priority)}">${ic('flag','s16')}</span>`:''}
   </div>`;
 }
@@ -928,7 +959,7 @@ function examCard(e){
   const big=n===null?`<b class="sm">—</b><small>${t('sin fecha')}</small>`:n===0?`<b class="sm">${t('HOY')}</b><small>${t('¡suerte!')}</small>`:`<b>${n}</b><small>${n===1?t('día'):t('días')}</small>`;
   const tot=e.steps.length, dn=e.steps.filter(s=>s.done).length;
   return `<div class="exam" data-act="open" data-id="${e.id}" role="button" tabindex="0">
-    <div class="top"><div class="cd ${cls}">${big}</div><div class="info"><b>${esc(e.title||t('Examen'))}</b>${chip(e.subjectId)}</div></div>
+    <div class="top"><div class="cd ${cls}">${big}</div><div class="info"><b>${esc(e.title||t('Examen'))}</b>${chip(e.subjectId,e.course)}</div></div>
     <div class="date">${ic('calendar','s14')}${e.date?cap1(fmtShort(e.date)):t('Sin fecha')}${e.time?' · '+e.time:''}</div>
     <div class="prog">${tot?`<div class="row"><span>${t('Repaso')}</span><span>${dn}/${tot} ${t('temas')}</span></div><div class="track ${dn===tot?'ok':''}"><i style="width:${Math.round(dn/tot*100)}%"></i></div>`:`<div class="row"><span class="muted">${t('Añade los temas para seguir tu repaso')}</span></div>`}</div>
   </div>`;
@@ -1021,7 +1052,8 @@ function detailHTML(it){
   const rd=it.date?relDay(it.date):'';
   let h=`<div class="card-h"><span class="kind ${it.kind}">${kindName(it.kind).toUpperCase()}</span><button class="link" data-act="edit" data-id="${it.id}">${t('Editar')}</button></div>
   <h2>${esc(it.title||t('(sin título)'))}</h2>
-  ${per?catChip(it.category):chip(it.subjectId)||`<span class="muted" style="font-size:12px">${t('Sin asignatura')}</span>`}
+  <div class="row" style="flex-wrap:wrap">${per?catChip(it.category):chip(it.subjectId,it.course)||`<span class="muted" style="font-size:12px">${t('Sin asignatura')}</span>`}${srcBadge(it)}</div>
+  ${it.link?`<a class="link" href="${esc(it.link)}" target="_blank" rel="noopener">${t('Abrir en {s}',{s:sourceName(it.source)||'web'})} ↗</a>`:''}
   <div class="prop"><span>${it.kind==='examen'?t('Fecha'):per?t('Cuándo'):t('Entrega')}</span><span class="row">${ic('calendar','s14')}${it.date?`${rd}${[t('Hoy'),t('Mañana'),t('Ayer')].includes(rd)?', '+fmtShort(it.date).toLowerCase():''}`:t('Sin fecha')}${it.time?' · '+it.time:''}</span></div>`;
   if(per&&it.place) h+=`<div class="prop"><span>${t('Lugar')}</span><span class="row">${ic('pin','s14')}${esc(it.place)}</span></div>`;
   if(!per){
@@ -1175,7 +1207,7 @@ function viewAjustes(){
   const sug=SUGGESTED.filter(n=>!subs.find(s=>norm(s.name)===norm(n)));
   if(sug.length) h+=`<div class="field"><span class="lbl">${t('Sugerencias (ARI)')}</span><div class="sugg">${sug.map(n=>`<button class="pill-f" data-act="subj-sugg" data-n="${esc(n)}">+ ${esc(n)}</button>`).join('')}</div></div>`;
   h+='</div></div><div class="side">';
-  h+=syncCard()+installCard();
+  h+=intCard()+syncCard()+installCard();
   h+=`<div class="card"><h3>${t('Copia de seguridad')}</h3><p class="howto">${t('Copia todos tus datos como texto para guardarlos donde quieras, o pega una copia para recuperarlos (también sirve para traer lo que tuvieras en la versión de claude.ai).')}</p><div class="row"><button class="btn ghost sm" data-act="export">${ic('copy','s16')}${t('Copiar mis datos')}</button></div><textarea data-in="import" data-focus="import" placeholder="${t('Pega aquí una copia para importarla…')}" style="min-height:64px">${esc(UI.importTxt||'')}</textarea><div class="row"><button class="btn ghost sm" data-act="import">${t('Importar')}</button>${UI.importMsg?`<span class="${UI.importErr?'err':'sec'}" style="font-size:12px">${esc(UI.importMsg)}</span>`:''}</div></div>`;
   h+='</div></div>';
   return h;
@@ -1280,6 +1312,63 @@ function toast(msg,undo){
   box.appendChild(el); while(box.children.length>3) box.firstChild.remove();
   setTimeout(()=>el.remove(),undo?6000:2600);
 }
+
+/* ================= CLASSROOM + MOODLE ================= */
+const INT={loaded:false,loading:false,st:{},busy:'',msg:'',err:false,moodleUrl:''};
+const SYNC_URL=op=>CFG.supabaseUrl.replace(/\/$/,'')+'/functions/v1/deures-sync?op='+op;
+async function syncCall(op,body){
+  const {data}=await SB.client.auth.getSession(); const tok=data&&data.session&&data.session.access_token;
+  const r=await fetch(SYNC_URL(op),{method:'POST',headers:{apikey:CFG.supabaseKey,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+  const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j;
+}
+async function intLoad(force){
+  if(S.mode!=='cloud'||INT.loading||(INT.loaded&&!force)) return;
+  INT.loading=true;
+  try{ INT.st=await syncCall('status'); INT.loaded=true; }catch(e){ INT.msg=t('No se ha podido consultar el estado de las conexiones.'); INT.err=true; }
+  INT.loading=false; render();
+}
+const sourceName=s=>s==='classroom'?'Classroom':s==='moodle'?'Moodle':'';
+function intErrText(code){
+  const c=String(code||'');
+  if(c==='reconnect') return t('Google ha caducado el acceso. Vuelve a conectar.');
+  if(/admin_policy|org_internal|disallowed|unauthorized_client/i.test(c)) return t('Tu instituto bloquea que apps externas lean Classroom.');
+  if(c==='access_denied') return t('Has cancelado la conexión.');
+  if(c==='not-ical'||/^moodle 4/.test(c)) return t('El enlace de Moodle no es válido o ha caducado. Vuelve a copiarlo desde Moodle.');
+  if(c==='google-not-configured') return t('Falta terminar la configuración de Google (ID y secreto de cliente).');
+  return c;
+}
+const ago=iso=>{ if(!iso) return ''; const m=Math.round((Date.now()-Date.parse(iso))/60000); return m<1?t('ahora mismo'):m<60?t('hace {n} min',{n:m}):m<1440?t('hace {n} h',{n:Math.round(m/60)}):t('hace {n} días',{n:Math.round(m/1440)}); };
+function intCard(){
+  if(S.mode!=='cloud') return `<div class="card"><h3>${t('Classroom y Moodle')}</h3><p class="howto">${t('Para importar tareas necesitas entrar con tu cuenta.')}</p></div>`;
+  intLoad();
+  const g=INT.st.google, m=INT.st.moodle, b=INT.busy;
+  const line=(s)=>s?`<small class="muted">${s.error?`<span class="err">${esc(intErrText(s.error))}</span>`:s.last_sync?t('Última vez: {a} · {n} tareas',{a:ago(s.last_sync),n:s.count||0}):t('Importando…')}</small>`:'';
+  let h=`<div class="card"><div class="card-h"><h3>${t('Classroom y Moodle')}</h3>${INT.loading?`<small class="muted">${t('Un momento…')}</small>`:''}</div>
+  <p class="howto">${t('Las tareas nuevas entran solas cada 30 minutos. Puedes añadirles pasos y notas: no se pierden al actualizarse.')}</p>`;
+  h+=`<div class="intg"><div class="intg-h"><span class="src gc">Classroom</span>${g?`<span class="sec" style="font-size:12px">${esc(g.email||'')}</span>`:''}</div>${line(g)}
+    <div class="row" style="flex-wrap:wrap">${g?`<button class="btn ghost sm" data-act="int-sync" ${b?'disabled':''}>${b==='sync'?t('Sincronizando…'):t('Sincronizar ahora')}</button><button class="btn ghost sm" data-act="gc-off" ${b?'disabled':''}>${t('Desconectar')}</button>`
+      :INT.st.googleConfigured===false?`<small class="muted">${t('Falta terminar la configuración de Google (ID y secreto de cliente).')}</small>`
+      :`<button class="btn sm" data-act="gc-connect" ${b?'disabled':''}>${b==='gc'?t('Abriendo Google…'):t('Conectar con Google Classroom')}</button>`}</div></div>`;
+  h+=`<div class="intg"><div class="intg-h"><span class="src md">Moodle</span>${m&&m.host?`<span class="sec" style="font-size:12px">${esc(m.host)}</span>`:''}</div>${line(m)}
+    ${m?`<div class="row" style="flex-wrap:wrap"><button class="btn ghost sm" data-act="int-sync" ${b?'disabled':''}>${b==='sync'?t('Sincronizando…'):t('Sincronizar ahora')}</button><button class="btn ghost sm" data-act="md-off" ${b?'disabled':''}>${t('Quitar')}</button></div>`
+      :`<p class="howto" style="font-size:12px">${t('En Moodle: Calendario → Exportar calendario → Todos los cursos + Eventos recientes y próximos → Obtener URL. Pégala aquí:')}</p><div class="row"><input data-in="md-url" data-focus="md-url" placeholder="https://…/calendar/export_execute.php?…" value="${esc(INT.moodleUrl)}"><button class="btn sm" data-act="md-save" ${b?'disabled':''}>${b==='md'?t('Un momento…'):t('Guardar')}</button></div>`}</div>`;
+  if(INT.msg) h+=`<p class="${INT.err?'err':'sec'}" style="font-size:12px">${esc(INT.msg)}</p>`;
+  return h+'</div>';
+}
+async function intAct(kind,fn){ INT.busy=kind; INT.msg=''; INT.err=false; render(); try{ await fn(); }catch(e){ INT.err=true; INT.msg=intErrText(e&&e.message); } INT.busy=''; render(); }
+const INT_ACT={
+  'gc-connect':()=>intAct('gc',async()=>{ const j=await syncCall('google-start',{return_to:siteUrl()}); location.href=j.url; }),
+  'gc-off':()=>intAct('gc',async()=>{ await syncCall('disconnect',{provider:'google'}); await intLoad(true); INT.msg=t('Classroom desconectado. Las tareas ya importadas se quedan.'); }),
+  'md-save':()=>intAct('md',async()=>{ const u=(INT.moodleUrl||'').trim(); if(!/^https:\/\//.test(u)) throw new Error(t('Pega el enlace completo que empieza por https://')); const j=await syncCall('moodle-set',{url:u}); INT.moodleUrl=''; await intLoad(true); const r=j.result&&j.result.moodle; if(r&&r.error) throw new Error(r.error); INT.msg=t('Moodle conectado: {n} tareas encontradas.',{n:(r&&r.total)||0}); }),
+  'md-off':()=>intAct('md',async()=>{ await syncCall('disconnect',{provider:'moodle'}); await intLoad(true); INT.msg=t('Moodle quitado. Las tareas ya importadas se quedan.'); }),
+  'int-sync':()=>intAct('sync',async()=>{ const j=await syncCall('sync-now'); await intLoad(true); const n=Object.values(j).reduce((a,r)=>a+((r&&r.created)||0),0); const errs=Object.values(j).filter(r=>r&&r.error); if(errs.length) throw new Error(errs[0].error); INT.msg=n?t('{n} tareas nuevas importadas.',{n}):t('Todo al día: no hay tareas nuevas.'); })
+};
+// vuelta desde Google (?gc=ok / ?gc=error)
+(function(){
+  const q=new URLSearchParams(location.search); const gc=q.get('gc'); if(!gc) return;
+  history.replaceState(null,'',location.pathname+location.hash);
+  setTimeout(()=>{ if(gc==='ok'){ toast(t('Classroom conectado: importando tus tareas…')); setTimeout(()=>intLoad(true),4000); } else { INT.err=true; INT.msg=intErrText(gc); render(); } },800);
+})();
 
 /* ================= INICIO DE SESIÓN ================= */
 const AUTH={mode:'login',email:'',pass:'',pass2:'',busy:false,msg:'',err:'',recovery:false};
@@ -1488,6 +1577,7 @@ function addSubject(name){
   UI.subjNew=''; saveSettings({subjects:[...subs,{id:uid(),name,color}],onboarded:true});
 }
 const ACT={
+  ...INT_ACT,
   go:el=>go(el.dataset.v),
   new:()=>newByView(),
   'new-on':el=>{ const d=el.dataset.d||''; openEditor({kind:UI.view==='personal'?'personal':'deber',date:d}); },
@@ -1548,7 +1638,7 @@ const ACT={
   'notif-toggle':el=>{ const k=el.dataset.k; saveSettings({notif:{...S.settings.notif,[k]:!S.settings.notif[k]}}); },
   install:async()=>{ if(!installEvt) return; installEvt.prompt(); try{ await installEvt.userChoice; }catch(e){} installEvt=null; render(); },
   // cuenta
-  logout:async()=>{ try{ const sub=await Promise.race([Push.current(),new Promise(r=>setTimeout(()=>r(null),2500))]); if(sub){ await SB.client.from('push_subscriptions').delete().eq('endpoint',sub.endpoint); await sub.unsubscribe(); } }catch(e){} Push.sub=null; await SB.client.auth.signOut(); },
+  logout:async()=>{ try{ const sub=await Promise.race([Push.current(),new Promise(r=>setTimeout(()=>r(null),2500))]); if(sub){ await SB.client.from('push_subscriptions').delete().eq('endpoint',sub.endpoint); await sub.unsubscribe(); } }catch(e){} Push.sub=null; INT.loaded=false; INT.st={}; await SB.client.auth.signOut(); },
   'go-login':()=>{ LS.set(K_MODE,null); location.reload(); },
   'au-go':()=>authGo(),
   'au-switch':()=>{ AUTH.mode=AUTH.mode==='login'?'signup':'login'; AUTH.err=''; AUTH.msg=''; render(); },
@@ -1568,6 +1658,7 @@ const IN={
   name:el=>deb('name',()=>saveSettings({name:el.value.slice(0,60)})),
   'subj-name':el=>{const id=el.dataset.id; deb('s'+id,()=>{ const v=el.value.trim(); if(!v) return; saveSettings({subjects:S.settings.subjects.map(s=>s.id===id?{...s,name:v}:s)}); });},
   'subj-new':el=>{UI.subjNew=el.value;},
+  'md-url':el=>{INT.moodleUrl=el.value;},
   import:el=>{UI.importTxt=el.value;},
   'onb-name':el=>{UI.onbName=el.value;},
   'onb-new':el=>{UI.onbNew=el.value;},
@@ -1589,6 +1680,7 @@ const ENTER={
   'ed-step':el=>{const v=el.value.trim(); if(!v) return; MODAL.steps.push({id:uid(),text:v,done:false}); MODAL.stepNew=''; renderModal(); const f=$('#modal [data-focus="ed-step"]'); if(f) f.focus();},
   'ed-title':()=>saveEditor(),
   'subj-new':()=>addSubject(UI.subjNew),
+  'md-url':()=>INT_ACT['md-save'](),
   'onb-new':()=>ACT['onb-add'](),
   'cl-room':()=>saveClass(),
   'au-email':()=>{ const p=$('[data-in="au-pass"]'); if(p) p.focus(); },

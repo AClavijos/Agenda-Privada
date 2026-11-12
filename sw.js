@@ -1,5 +1,5 @@
 /* Deures · service worker: funciona sin conexión + recibe notificaciones push */
-const VERSION='deures-20261109204259';
+const VERSION='deures-20261112161505';
 const SHELL=['./','./index.html','./config.js','./vendor/supabase.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/badge-96.png'];
 
 self.addEventListener('install',e=>{
